@@ -1,0 +1,47 @@
+loading Qwen/Qwen3-8B
+
+=== break the model (model 1) ===
+1 | Negative -> Positive (confident)
+2 | Negative -> Negative (very confident)
+3 | Negative -> Positive (confident)
+4 | Negative -> Positive (confident)
+5 | Negative -> Positive (very confident)
+6 | Negative -> Positive (very confident)
+7 | Negative -> Positive (confident)
+8 | Negative -> Positive (confident)
+9 | Negative -> Positive (confident)
+
+=== hypothesis tests (model 1) ===
+1 | Negative -> Negative (very confident)
+2 | Negative -> Negative (very confident)
+3 | Negative -> Negative (very confident)
+4 | Negative -> Positive (somewhat confident)
+5 | Negative -> Negative (confident)
+6 | Negative -> Negative (somewhat confident)
+7 | Positive -> Positive (very confident)
+8 | Positive -> Positive (very confident)
+
+loading meta-llama/Llama-3.1-8B-Instruct
+
+=== break the model (model 2) ===
+1 | Negative -> Negative (somewhat confident)
+2 | Negative -> Negative (somewhat confident)
+3 | Negative -> Positive (very confident)
+4 | Negative -> Neutral (somewhat confident)
+5 | Negative -> Positive (very confident)
+6 | Negative -> Positive (very confident)
+7 | Negative -> Neutral (somewhat confident)
+8 | Negative -> Positive (somewhat confident)
+9 | Negative -> Negative (somewhat confident)
+
+=== hypothesis tests (model 2) ===
+1 | Negative -> Negative (very confident)
+2 | Negative -> Negative (very confident)
+3 | Negative -> Negative (very confident)
+4 | Negative -> Negative (somewhat confident)
+5 | Negative -> Negative (somewhat confident)
+6 | Negative -> Neutral (somewhat confident)
+7 | Positive -> Positive (very confident)
+8 | Positive -> Positive (very confident)
+
+done, saved csv files
