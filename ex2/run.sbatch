@@ -2,8 +2,8 @@
 #SBATCH --job-name=anlp_ex2_nazran
 #SBATCH --output=ex2_%j.out
 #SBATCH --error=ex2_%j.err
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
+#SBATCH --partition=salmon
+#SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=01:30:00
