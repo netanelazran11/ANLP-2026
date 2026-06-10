@@ -1,14 +1,20 @@
 # ANLP Exercise 2 – Part 2 | Netanel Azran
 #
-# Failure type: contrast / expectation-reversal sentences.
-# The model sees strong early sentiment (positive or negative) and ignores
-# the final clause that reverses the overall sentiment.
+# Failure type: implicit negative sentiment — sentences that are negative but
+# contain NO explicit negative words. The negativity must be inferred from
+# understatement, irony, or real-world consequence.
 #
-# Hypothesis: models over-weight emotionally salient early tokens and
-# under-weight the concluding evaluative clause.
+# Hypothesis: the model classifies sentiment from the presence of explicit
+# positive/negative vocabulary. When negativity is only implied (surface words
+# are neutral or positive), the model defaults to Positive.
 #
-# Hypothesis tests probe: word order, conjunction choice, adjective intensity,
-# negation, and the presence/absence of a contrasting clause.
+# Hypothesis tests: controlled variation on a single scenario (umbrella).
+# We change ONLY how explicit the negativity is, keeping everything else fixed.
+# Expected pattern: model correct on explicit versions, wrong on understatement.
+#
+# Proposed solution: two-step prompting — first ask the model to describe the
+# implied outcome ("what does this say about the product?"), then classify
+# that generated text, which will contain explicit polarity.
 
 import torch
 import pandas as pd
@@ -23,36 +29,41 @@ SYSTEM = ("You are a sentiment classifier. Decide the overall sentiment of the t
           "Answer with one word, Positive or Negative, and a confidence in parentheses, "
           "like 'Positive (very confident)'. Do not explain.")
 
-# Break examples: long effusive positive opening + short understated negative ending.
-# No explicit contrast conjunctions, no strongly negative vocabulary in the ending.
-# This maximises the imbalance between the salient early tokens and the quiet final verdict.
+# Break examples: negative sentiment implied through understatement or
+# real-world consequence — zero explicit negative words on the surface.
 break_examples = [
-    ("The cinematography was breathtaking, every frame composed like a painting, the score was the most hauntingly beautiful I have heard in years, and the cast delivered what will surely be award-winning performances. I found myself checking my watch by the second act.", "Negative"),
-    ("What a phenomenal cast. The set design is the most gorgeous I have ever seen on screen. The director's previous three films are among my all-time favourites. This one left me cold.", "Negative"),
-    ("Every single review I read gave this restaurant five stars. The chef is celebrated worldwide. The tasting menu is booked three months in advance. When I finally went, I left hungry and wishing I had stayed home.", "Negative"),
-    ("Brilliant premise, award-winning trailer, legendary director, once-in-a-generation cast, flawless marketing campaign. The film did not deliver on any of it.", "Negative"),
-    ("The hotel photographs are stunning, the amenities include a world-class spa and a rooftop infinity pool, and the concierge service is described as unparalleled. Our stay was a succession of small disappointments.", "Negative"),
-    ("The trailer looked cheap, the early reviews were scathing, and even the director seemed to have lost faith during press interviews. Somehow it turned out to be the most moving and beautiful film I have seen in a decade.", "Positive"),
+    ("This umbrella kept me perfectly dry for the first ten seconds of the storm.", "Negative"),
+    ("The battery lasts just long enough to get from my bedroom to the kitchen.", "Negative"),
+    ("Customer support got back to me in only three hours, which was faster than my last ticket.", "Negative"),
+    ("The phone survived a drop from pocket height, as long as I was sitting down at the time.", "Negative"),
+    ("After only two visits to the mechanic this month, the car is running perfectly again.", "Negative"),
+    ("The noise-cancelling headphones reduced the drilling noise next door to a very manageable level.", "Negative"),
+    ("I have now successfully assembled three of the seven required pieces.", "Negative"),
+    ("The waterproofing performed admirably in light drizzle, the only condition I had the chance to test.", "Negative"),
+    ("I got to sample the entire menu, as each dish came back to the kitchen at least once.", "Negative"),
 ]
 
-# Hypothesis tests: vary order, conjunction, intensity, negation, and control
+# Hypothesis tests: one scenario (umbrella), vary ONLY how explicit the negativity is.
+# H1–H3: explicit negatives  → model should be correct (Negative).
+# H4–H6: pure understatement → model should FAIL (predict Positive).
+# H7–H8: positive controls   → model should be correct (Positive).
 hypothesis_tests = [
-    # H1 – flip order: negative first, positive second → should still be Negative overall
-    ("This film was a tedious, lifeless bore, even though the cinematography was stunning and the score was breathtaking.", "Negative"),
-    # H2 – explicit adversative conjunction "despite"
-    ("Despite stunning cinematography and a breathtaking score, the film was a tedious, lifeless bore.", "Negative"),
-    # H3 – weaker positive words (fine/okay) to see if intensity drives the error
-    ("The cinematography was fine and the score was okay, but the film was a tedious, lifeless bore.", "Negative"),
-    # H4 – amplify the positive superlatives even further
-    ("The cinematography was the most jaw-dropping, gorgeous, breathtaking work I have ever seen - yet the film was a tedious, lifeless bore.", "Negative"),
-    # H5 – simple negative, no contrast (control)
-    ("The movie was not great and the acting was not good.", "Negative"),
-    # H6 – negation reversal: "not the worst" → actually positive
-    ("It is not the worst film ever; in fact it was genuinely wonderful.", "Positive"),
-    # H7 – pure negative, no positive words (control)
-    ("A boring, lifeless, tedious film that I regret watching.", "Negative"),
-    # H8 – pure positive, no negative words (control)
-    ("A stunning, breathtaking film that I absolutely loved.", "Positive"),
+    # H1 – fully explicit negative (control)
+    ("This umbrella broke in the first minute of rain and I got completely soaked.", "Negative"),
+    # H2 – explicit negative with opinion word
+    ("This umbrella is useless. It fell apart immediately and left me drenched.", "Negative"),
+    # H3 – sarcasm marker present ("Oh great")
+    ("Oh great, another umbrella that lasts all of ten seconds in the rain.", "Negative"),
+    # H4 – pure understatement, zero negative words → expected model failure
+    ("This umbrella kept me dry for the first ten seconds of the storm.", "Negative"),
+    # H5 – understatement with a specific number → expected model failure
+    ("The battery lasts just long enough to reach the coffee machine from my desk.", "Negative"),
+    # H6 – implied consequence, no sentiment words → expected model failure
+    ("I used this umbrella once before going back to my old one.", "Negative"),
+    # H7 – explicit positive (control)
+    ("This umbrella is fantastic. It kept me completely dry through two hours of heavy rain.", "Positive"),
+    # H8 – positive understatement (control): model should still be correct
+    ("This umbrella handled a two-hour downpour without a single leak.", "Positive"),
 ]
 
 
