@@ -1,0 +1,224 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{tabularx}
+
+\setlength{\parskip}{0.55em}
+\setlength{\parindent}{0pt}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{\textbf{Advanced NLP -- Exercise 2}\\[0.3em]
+       \large Part 2: Sentiment Analysis Failure Analysis}
+\author{Netanel Azran}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+% ============================================================
+\section*{Failure Type: Implicit Negative Sentiment}
+% ============================================================
+
+The failure type I investigated is \textbf{implicit negative sentiment}: sentences
+whose true sentiment is negative, but which contain \emph{no explicit negative
+vocabulary}. The negativity must be inferred from understatement, irony, or
+real-world consequence rather than read off surface words.
+
+Examples of this type of sentence include:
+
+\begin{itemize}
+  \item \emph{``This umbrella kept me perfectly dry for the first ten seconds of the storm.''}
+  \item \emph{``The battery lasts just long enough to get from my bedroom to the kitchen.''}
+  \item \emph{``I got to sample the entire menu, as each dish came back to the kitchen at least once.''}
+\end{itemize}
+
+None of these sentences contain words like \emph{bad}, \emph{disappointing}, or
+\emph{terrible}. A reader understands the negative sentiment by reasoning about
+what the stated facts \emph{imply} about the product or experience --- an umbrella
+that lasts ten seconds in a storm is useless; a battery that only reaches the
+kitchen is absurdly short; dishes returning to the kitchen means the food was sent
+back. This kind of reasoning requires world knowledge and pragmatic inference, not
+just lexical matching.
+
+% ============================================================
+\section*{Hypothesis}
+% ============================================================
+
+\textbf{Hypothesis:} Instruction-tuned language models performing zero-shot
+sentiment classification over-rely on the presence of explicit positive or negative
+vocabulary. When the surface words of a sentence are neutral or even positive
+(``perfectly dry'', ``successfully assembled'', ``admirably''), the model defaults
+to \texttt{Positive}, ignoring the pragmatic implication that the stated
+performance is far below any reasonable expectation.
+
+This is a form of \emph{lexical shortcut}: the model has learned that negative
+words correlate strongly with negative sentiment and positive words with positive
+sentiment during training, and it applies this heuristic without engaging in the
+deeper inference required for understatement.
+
+% ============================================================
+\section*{Break Examples}
+% ============================================================
+
+Table~\ref{tab:break} lists nine sentences designed to trigger the failure.
+Every sentence is negative in meaning, but none contains an explicit negative
+sentiment word. The negativity arises entirely from understatement or implied
+real-world consequence.
+
+\begin{table}[h!]
+\centering
+\caption{Break examples: implicit negative sentiment with no explicit negative words.}
+\label{tab:break}
+\small
+\begin{tabularx}{\textwidth}{c L{7.5cm} c c c}
+\toprule
+\# & Input & Gold & Qwen3-8B & Llama-3.1-8B \\
+\midrule
+1 & This umbrella kept me perfectly dry for the first ten seconds of the storm.
+  & Neg & \textbf{Pos} & Neg \\
+2 & The battery lasts just long enough to get from my bedroom to the kitchen.
+  & Neg & \textbf{Pos} & Neg \\
+3 & Customer support got back to me in only three hours, which was faster than my last ticket.
+  & Neg & \textbf{Pos} & \textbf{Pos} \\
+4 & The phone survived a drop from pocket height, as long as I was sitting down at the time.
+  & Neg & \textbf{Pos} & \textbf{Neu} \\
+5 & After only two visits to the mechanic this month, the car is running perfectly again.
+  & Neg & \textbf{Pos} & \textbf{Pos} \\
+6 & The noise-cancelling headphones reduced the drilling noise next door to a very manageable level.
+  & Neg & \textbf{Pos} & \textbf{Pos} \\
+7 & I have now successfully assembled three of the seven required pieces.
+  & Neg & \textbf{Pos} & \textbf{Neu} \\
+8 & The waterproofing performed admirably in light drizzle, the only condition I had the chance to test.
+  & Neg & \textbf{Pos} & \textbf{Pos} \\
+9 & I got to sample the entire menu, as each dish came back to the kitchen at least once.
+  & Neg & \textbf{Pos} & Neg \\
+\midrule
+\multicolumn{2}{l}{\textbf{Failures (non-Negative predictions)}} & & \textbf{8/9} & \textbf{6/9} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent
+\textbf{Observation.} Qwen3-8B failed on 8 out of 9 examples, predicting
+\texttt{Positive} in every case. The one exception (item~1) is the sentence
+where the time qualifier (``ten seconds'') is perhaps most salient as an absurd
+number. Llama-3.1-8B-Instruct failed on 6 out of 9, with two predictions of
+\texttt{Neutral} (items~4 and~7). Both models comfortably exceed the threshold of
+five failures, confirming that the failure type is real and reproducible.
+
+% ============================================================
+\section*{Hypothesis Tests}
+% ============================================================
+
+To test the hypothesis more precisely, I designed eight controlled inputs that
+vary \emph{only the degree of explicitness} of the negativity, while keeping the
+underlying scenario constant (an umbrella that fails quickly). This allows us to
+isolate the effect of lexical explicitness on model predictions.
+
+\begin{itemize}
+  \item \textbf{H1--H2 (explicit negative, control):} fully explicit negative words present.
+        Model should classify as \texttt{Negative}.
+  \item \textbf{H3 (sarcasm marker):} the phrase ``Oh great'' signals irony.
+        Model should classify as \texttt{Negative}.
+  \item \textbf{H4--H6 (understatement / implied consequence):} zero explicit negative words.
+        \emph{Predicted model failure}: should predict \texttt{Positive}.
+  \item \textbf{H7--H8 (explicit positive, control):} clearly positive sentences.
+        Model should classify as \texttt{Positive}.
+\end{itemize}
+
+\begin{table}[h!]
+\centering
+\caption{Hypothesis tests: controlled variation of lexical explicitness.}
+\label{tab:hyp}
+\small
+\begin{tabularx}{\textwidth}{c L{7cm} c c c}
+\toprule
+\# & Input & Gold & Qwen3-8B & Llama-3.1-8B \\
+\midrule
+H1 & This umbrella broke in the first minute of rain and I got completely soaked.
+   & Neg & Neg & Neg \\
+H2 & This umbrella is useless. It fell apart immediately and left me drenched.
+   & Neg & Neg & Neg \\
+H3 & Oh great, another umbrella that lasts all of ten seconds in the rain.
+   & Neg & Neg & Neg \\
+H4 & This umbrella kept me dry for the first ten seconds of the storm.
+   & Neg & \textbf{Pos} & Neg \\
+H5 & The battery lasts just long enough to reach the coffee machine from my desk.
+   & Neg & Neg & Neg \\
+H6 & I used this umbrella once before going back to my old one.
+   & Neg & Neg & \textbf{Neu} \\
+H7 & This umbrella is fantastic. It kept me completely dry through two hours of heavy rain.
+   & Pos & Pos & Pos \\
+H8 & This umbrella handled a two-hour downpour without a single leak.
+   & Pos & Pos & Pos \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent
+\textbf{Discussion.} The hypothesis is \emph{partially confirmed}. Both models
+correctly classify the explicit negative controls (H1--H2) and the sarcasm-marked
+example (H3), showing that the failures on the break examples are not due to a
+general inability to classify negatives. For the understatement probes, Qwen3-8B
+failed on H4 (``ten seconds'') as predicted, but classified H5 and H6 correctly,
+suggesting it can sometimes infer implication from highly specific numbers or
+from the use of ``once.'' Llama-3.1-8B was more robust on H4--H5 but produced
+\texttt{Neutral} on H6, indicating partial confusion on implied-consequence
+sentences. Both models succeed on the positive controls H7--H8.
+
+The pattern is consistent with the hypothesis: \emph{the more implicit the
+negativity, the more likely the model is to fail}, even if the relationship is not
+perfectly monotone on the controlled test set.
+
+% ============================================================
+\section*{Comparison Across Models}
+% ============================================================
+
+Qwen3-8B shows the sharper failure: it predicted \texttt{Positive} confidently on
+8/9 break examples, often with \emph{``confident''} or \emph{``very confident''}
+reported in its output. This suggests it has essentially no mechanism for inferring
+negativity from understatement. Llama-3.1-8B-Instruct is somewhat more cautious
+--- it sometimes returns \texttt{Neutral} instead of \texttt{Positive}, and it
+correctly classified two examples that Qwen got wrong. However, it still failed on
+6/9 examples, confirming the failure type is not model-specific.
+
+% ============================================================
+\section*{Proposed Solution}
+% ============================================================
+
+\textbf{Two-step prompting.} The core problem is that the model must do pragmatic
+inference before it can classify sentiment. The proposed solution is to make this
+inference explicit by splitting the task into two prompts:
+
+\begin{enumerate}
+  \item \textbf{Step 1 -- Implication extraction:} Ask the model to paraphrase
+        what the sentence implies about the product or experience in plain terms.
+        Prompt: \emph{``In one sentence, describe what the following review implies
+        about the product's quality: [input].''}
+  \item \textbf{Step 2 -- Classification:} Classify the \emph{generated paraphrase}
+        from step~1, not the original sentence. Because the model's own paraphrase
+        will contain explicit evaluative language (e.g.,~\emph{``The umbrella fails
+        very quickly in rain''}), the standard lexical classifier works correctly.
+\end{enumerate}
+
+For example, given \emph{``This umbrella kept me perfectly dry for the first ten
+seconds of the storm,''} step~1 would likely produce something like \emph{``The
+umbrella provides almost no protection from rain.''} Classifying that paraphrase
+yields \texttt{Negative} correctly.
+
+This solution requires no additional training or labeled data and is compatible
+with any instruction-tuned model. Its cost is one extra forward pass per input.
+The potential downside is that the quality of step~2 depends on step~1: if the
+model's paraphrase is itself vague or overly neutral, the classification may still
+be wrong. Nonetheless, this approach directly addresses the root cause ---
+the absence of explicit sentiment cues --- by generating them before classifying.
+
+\end{document}
