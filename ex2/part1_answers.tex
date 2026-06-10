@@ -1,6 +1,5 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=2.5cm]{geometry}
-\usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{enumitem}
@@ -11,7 +10,7 @@
 \setlength{\parindent}{0pt}
 
 \title{\textbf{Advanced NLP -- Exercise 2}\\[0.3em]
-       \large Part 1: Open Questions}
+       \large Part 1}
 \author{Netanel Azran}
 \date{June 2026}
 
@@ -22,161 +21,104 @@
 \section*{Question 1 \;---\; Societal Bias Beyond Gender}
 % ============================================================
 
-In class we looked at gender bias as a prominent example of societal bias in NLP.
-Below I describe a paper from the ACL Anthology that focuses on a different type
-of societal bias: \textbf{stereotypical bias tied to race and religion}.
-
-\medskip
 \textbf{Paper:} Moin Nadeem, Anna Bethke, and Siva Reddy.
 ``StereoSet: Measuring stereotypical bias in pretrained language models.''
-\emph{Proceedings of ACL-IJCNLP 2021}.
+\emph{ACL-IJCNLP 2021}.
 
-\medskip
-\textbf{What the paper introduces (dataset).}
-StereoSet is a large crowdsourced dataset built specifically to measure
-how much pretrained language models rely on social stereotypes when predicting
-text. The dataset contains roughly \textbf{17,000 items} across four bias
-categories: race, religion, profession, and gender. Since Q1 asks about
-non-gender bias, the relevant portions are the race and religion subsets, which
-together cover around \textbf{400 unique target groups}
-(e.g., specific racial backgrounds and world religions).
-
-Each item consists of a short context followed by three candidate continuations:
+StereoSet is a crowdsourced benchmark for measuring how much pretrained language
+models rely on social stereotypes. It covers four bias categories --- race,
+religion, profession, and gender --- with roughly 17,000 items in total.
+Each item presents a short context followed by three candidate continuations:
 a \emph{stereotypical} one, an \emph{anti-stereotypical} one, and a semantically
-\emph{unrelated} (meaningless) one. For example, given the context
-``\emph{Arabs are...},'' the three options might be
-``violent and dangerous'' (stereotype), ``peaceful and welcoming'' (anti-stereotype),
-and ``made of bricks'' (unrelated).
+\emph{unrelated} one. For example, given ``\emph{Arabs are\ldots},'' the options
+might be ``violent and dangerous,'' ``peaceful and welcoming,'' and ``made of
+bricks.''
 
-\textbf{Domain and collection.}
-The data was collected from English-speaking crowdworkers on Amazon Mechanical Turk.
-Items come in two structural formats: \emph{intrasentence}
-(the model fills in a blank within a single sentence) and
-\emph{intersentence} (the model continues a short passage), giving a broad
-coverage of contexts in which bias can surface.
-
-\textbf{How bias is quantified.}
-The paper proposes two metrics: the \emph{Language Model Score} (LMS), which
-measures whether the model generally prefers meaningful completions over nonsensical
-ones (a proxy for language understanding), and the \emph{Stereotype Score} (SS),
-which measures how often the model favors the stereotypical option over the
-anti-stereotypical one. A perfectly unbiased model would score 50 on SS.
-The two are combined into the \emph{ICAT score}, which rewards models that are
-both linguistically capable and minimally biased. The authors find that all
-tested models (BERT, RoBERTa, XLNet, GPT-2) show clear stereotypical preferences
-in both the race and religion categories.
+The paper proposes two metrics. The \emph{Stereotype Score} (SS) measures how
+often the model prefers the stereotypical continuation over the
+anti-stereotypical one (50 = unbiased). The \emph{Language Model Score} (LMS)
+checks that the model still prefers meaningful text over nonsense, serving as a
+sanity check. The two are combined into the \emph{ICAT score}, which rewards
+models that are both capable and minimally biased. Tested models (BERT,
+RoBERTa, XLNet, GPT-2) all show clear stereotypical preferences in the race and
+religion subsets.
 
 % ============================================================
 \section*{Question 2 \;---\; Three Efficiency Methods}
 % ============================================================
 
-In class we covered four categories of efficiency techniques: training,
-inference, modeling, and data methods. I chose one method from three of these
-categories.
-
 % ------ Method 1 ------
-\subsection*{Method 1: Quantization \quad\textnormal{\small(Inference efficiency)}}
+\subsection*{Method 1: Quantization \quad\textnormal{\small(Inference)}}
 
-\textbf{(a) Description.}
-Quantization lowers the numerical precision of a model's weights and activations.
-Instead of the standard 32-bit floating point (float32), weights are stored and
-computed in float16, INT8, or even INT4. This can be done after training
-(\emph{post-training quantization}) without any retraining, or during training
-(\emph{quantization-aware training}) so the model learns to tolerate the
-precision reduction.
+Quantization reduces the numerical precision of model weights --- from float32
+down to float16, INT8, or INT4. This can be applied after training
+(\emph{post-training quantization}) without any retraining, making it very
+cheap to deploy.
 
-\textbf{(b) Resources saved.}
-Quantization primarily reduces \emph{memory}: a 7B-parameter model takes roughly
-28\,GB in float32 but only about 3.5\,GB in INT4. It also speeds up
-\emph{inference runtime}, since lower-precision arithmetic executes faster on
-modern hardware. The savings are especially relevant for deployment on GPUs with
-limited VRAM.
+The main saving is \emph{memory}: a 7B-parameter model shrinks from $\sim$28\,GB
+in float32 to $\sim$3.5\,GB in INT4, which is the difference between needing a
+data-centre GPU and fitting on a consumer card. Inference speed also improves
+because lower-precision arithmetic is faster on modern hardware.
 
-\textbf{(c) Trade-off.}
-The resource savings come at the cost of a small drop in \emph{accuracy},
-which becomes more noticeable at very aggressive quantization (e.g., 4-bit).
-Quantization-aware training recovers most of the accuracy loss, but it requires
-additional \emph{training compute} -- so there is a direct trade-off between
-deployment efficiency and training cost.
+The trade-off is a small drop in accuracy, which becomes more noticeable at
+very aggressive quantization (4-bit). Quantization-aware training recovers most
+of the loss but requires an extra training phase.
 
 % ------ Method 2 ------
-\subsection*{Method 2: LoRA (Low-Rank Adaptation) \quad\textnormal{\small(Training efficiency)}}
+\subsection*{Method 2: LoRA \quad\textnormal{\small(Training)}}
 
-\textbf{(a) Description.}
-LoRA (Hu et al., 2022) is a parameter-efficient fine-tuning method. The idea is
-to freeze all the pretrained weights and inject small \emph{low-rank} matrices
-into each transformer layer. Only these adapter matrices are updated during
-fine-tuning, while the rest of the model stays unchanged. Once training is done,
-the adapters are merged back into the original weights, so inference cost is
-identical to the base model.
+LoRA (Hu et al., 2022) fine-tunes a model by freezing all pretrained weights
+and injecting small low-rank adapter matrices into each transformer layer. Only
+those adapters are updated; the rest of the model is untouched. After training,
+the adapters can be merged back into the base weights, so inference cost does
+not change.
 
-\textbf{(b) Resources saved.}
-LoRA reduces both \emph{training memory} and \emph{training compute} dramatically.
-For a 7B model, the number of trainable parameters drops from about 7 billion
-to roughly 20--30 million (under 0.5\%), making it possible to fine-tune
-large models on a single consumer GPU.
+For a 7B model, the number of trainable parameters drops from 7 billion to
+roughly 20--30 million (under 0.5\%), making it practical to fine-tune large
+models on a single consumer GPU.
 
-\textbf{(c) Trade-off.}
-The main cost is a slight reduction in \emph{expressiveness}: because the weight
-updates are constrained to a low-rank subspace, LoRA may fall slightly behind
-full fine-tuning on some tasks. In practice the gap is small. There is also a
-minor overhead of managing separate adapter files when deploying the same base
-model with multiple task-specific adapters.
+The trade-off is expressiveness: because weight updates are constrained to a
+low-rank subspace, LoRA may fall slightly behind full fine-tuning on some tasks,
+though in practice the gap is small.
 
 % ------ Method 3 ------
-\subsection*{Method 3: Knowledge Distillation \quad\textnormal{\small(Modeling efficiency)}}
+\subsection*{Method 3: Knowledge Distillation \quad\textnormal{\small(Modeling)}}
 
-\textbf{(a) Description.}
-Knowledge distillation (Hinton et al., 2015) trains a smaller \emph{student}
-model to replicate the behavior of a larger \emph{teacher} model. Rather than
-training the student on hard (one-hot) labels, it is trained to match the
-teacher's full output distribution (``soft'' probabilities), which carries
-richer information. A well-known NLP example is DistilBERT (Sanh et al., 2019),
-a 66M-parameter student trained from BERT-base (110M parameters) that retains
-about 97\% of BERT's performance on the GLUE benchmark.
+Knowledge distillation (Hinton et al., 2015) trains a small \emph{student} model
+to mimic a large \emph{teacher} model. Instead of training on hard one-hot
+labels, the student matches the teacher's full output distribution (``soft''
+probabilities), which carries richer information about similarity between
+classes. A well-known NLP example is DistilBERT --- a 66M-parameter student
+trained from BERT-base (110M parameters) that retains $\sim$97\% of BERT's
+GLUE performance while being 40\% smaller and 60\% faster.
 
-\textbf{(b) Resources saved.}
-The result is a smaller model that saves \emph{inference memory},
-\emph{inference compute}, and \emph{latency}. DistilBERT, for instance,
-is 40\% smaller than BERT-base and roughly 60\% faster at inference time.
+The trade-off is extra training cost: generating soft labels requires running
+the large teacher, so distillation takes more compute than training the student
+from scratch.
 
-\textbf{(c) Trade-off.}
-The inference savings come at the expense of extra \emph{training cost}:
-the distillation process requires running the large teacher to generate soft
-labels and then training the student on them, which takes more time and compute
-than training the student from scratch on hard labels alone. There is also a
-performance ceiling -- the student is unlikely to match the teacher on complex
-or rare inputs.
-
-% ------ Pairwise combinations ------
-\subsection*{Pairwise Combination Analysis}
+% ------ Pairwise ------
+\subsection*{Pairwise Combinations}
 
 \paragraph{Quantization + LoRA.}
-These two methods are highly complementary and are already combined in practice
-under the name \textbf{QLoRA} (Dettmers et al., 2023). The frozen base model is
-quantized to 4-bit (saving the GPU memory needed to hold it), while the LoRA
-adapters are still trained in 16-bit precision. This combination makes it
-possible to fine-tune a 65B-parameter model on a single 48\,GB GPU -- something
-neither method could achieve independently. There is no fundamental conflict
-between them.
+These two are already combined in practice as \textbf{QLoRA} (Dettmers et al.,
+2023). The frozen base model is quantized to 4-bit (saving the memory needed to
+hold it), while the LoRA adapters are trained in 16-bit. This makes it possible
+to fine-tune a 65B model on a single 48\,GB GPU --- something neither method
+achieves alone.
 
 \paragraph{Quantization + Knowledge Distillation.}
-These methods are also compatible and are commonly used in sequence. A natural
-pipeline is: (1) distill a large teacher into a smaller student, and (2) apply
-quantization to the student for deployment. The two steps independently reduce
-the inference footprint, and their effects stack: a student that is 4$\times$
-smaller than the teacher, then quantized to INT8, occupies about one-eighth the
-memory of the original teacher. The only downside is two sequential training
-phases rather than one.
+A natural pipeline: first distill the large teacher into a smaller student,
+then quantize the student for deployment. The two savings stack --- a student
+that is 4$\times$ smaller than the teacher, then quantized to INT8, ends up
+using about one-eighth the memory of the original. The only cost is two
+sequential training phases.
 
 \paragraph{LoRA + Knowledge Distillation.}
-These methods target different stages of the model lifecycle -- LoRA reduces
-fine-tuning cost, while distillation reduces model size -- so they address
-different problems. They can be combined: for example, one could first distill
-a large model into a smaller student, and then use LoRA to fine-tune that
-student efficiently for a downstream task. This is useful when both
-\emph{deployment efficiency} (small model) and \emph{training efficiency}
-(cheap adaptation) are required at the same time. They are not mutually
-exclusive.
+These methods target different problems --- LoRA reduces fine-tuning cost while
+distillation reduces model size --- so they are complementary rather than
+redundant. One practical combination is to distill a large model into a smaller
+student, then use LoRA to adapt that student cheaply to a downstream task.
+Useful when both deployment efficiency and training efficiency are required at
+the same time.
 
 \end{document}
