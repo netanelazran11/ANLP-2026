@@ -23,14 +23,16 @@ SYSTEM = ("You are a sentiment classifier. Decide the overall sentiment of the t
           "Answer with one word, Positive or Negative, and a confidence in parentheses, "
           "like 'Positive (very confident)'. Do not explain.")
 
-# Break examples: strong early sentiment contradicted by the final verdict
+# Break examples: long effusive positive opening + short understated negative ending.
+# No explicit contrast conjunctions, no strongly negative vocabulary in the ending.
+# This maximises the imbalance between the salient early tokens and the quiet final verdict.
 break_examples = [
-    ("The cinematography was absolutely stunning and the score was breathtaking - none of which saved this film from being a tedious, lifeless bore.", "Negative"),
-    ("What a phenomenal cast and a gorgeous set; too bad the script was so insulting that I walked out before the halfway mark.", "Negative"),
-    ("I adored every glowing review I read about this restaurant. The actual meal was cold, overpriced, and completely forgettable.", "Negative"),
-    ("Brilliant premise, an award-worthy trailer, an A-list director - and yet the movie itself is two hours of pure boredom.", "Negative"),
-    ("The hotel website promised a luxurious spa and a five-star breakfast. In reality the room was filthy and the staff were rude.", "Negative"),
-    ("The trailer looked like a complete disaster and the early reviews were brutal, but honestly this turned out to be the most moving film I have seen all year.", "Positive"),
+    ("The cinematography was breathtaking, every frame composed like a painting, the score was the most hauntingly beautiful I have heard in years, and the cast delivered what will surely be award-winning performances. I found myself checking my watch by the second act.", "Negative"),
+    ("What a phenomenal cast. The set design is the most gorgeous I have ever seen on screen. The director's previous three films are among my all-time favourites. This one left me cold.", "Negative"),
+    ("Every single review I read gave this restaurant five stars. The chef is celebrated worldwide. The tasting menu is booked three months in advance. When I finally went, I left hungry and wishing I had stayed home.", "Negative"),
+    ("Brilliant premise, award-winning trailer, legendary director, once-in-a-generation cast, flawless marketing campaign. The film did not deliver on any of it.", "Negative"),
+    ("The hotel photographs are stunning, the amenities include a world-class spa and a rooftop infinity pool, and the concierge service is described as unparalleled. Our stay was a succession of small disappointments.", "Negative"),
+    ("The trailer looked cheap, the early reviews were scathing, and even the director seemed to have lost faith during press interviews. Somehow it turned out to be the most moving and beautiful film I have seen in a decade.", "Positive"),
 ]
 
 # Hypothesis tests: vary order, conjunction, intensity, negation, and control
