@@ -8,5 +8,5 @@
 #SBATCH --mem=32G
 #SBATCH --time=01:30:00
 
-source venv/bin/activate
+source /sci/labs/benjamin.yakir/netanel.azran/venv_torch22/bin/activate
 python ex2_part2.py
