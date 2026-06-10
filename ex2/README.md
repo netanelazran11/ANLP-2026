@@ -22,8 +22,8 @@ and the presence of negation to map the precise extent of the problem.
 ## Setup on Moriah
 
 ```bash
-git clone https://github.com/netanelazran11/anlp-ex2.git
-cd anlp-ex2
+git clone https://github.com/netanelazran11/ANLP-2026.git
+cd ANLP-2026/ex2
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
